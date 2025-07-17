@@ -59,6 +59,70 @@ const sendMessage = async ({
     client.release();
   }
 };
+// Ambil semua pesan antara user dan kontak (2 arah)
+const getMessagesBetween = async (userId, contactId) => {
+  const client = await db.connect();
+
+  try {
+    const messagesRes = await client.query(
+      `SELECT m.*, v.is_visible, v.hidden_at
+       FROM messages m
+       JOIN message_user_visibility v ON v.message_id = m.message_id
+       WHERE
+         ((m.from_user_id = $1 AND m.to_user_id = $2)
+         OR (m.from_user_id = $2 AND m.to_user_id = $1))
+         AND v.user_id = $1
+         AND v.is_visible = true
+       ORDER BY m.created_at ASC, m.message_id ASC`,
+      [userId, contactId]
+    );
+
+    const messages = messagesRes.rows;
+
+    if (messages.length === 0) return [];
+
+    const messageIds = messages.map((msg) => msg.message_id);
+
+    const attachmentsRes = await client.query(
+      `SELECT * FROM message_attachments WHERE message_id = ANY($1::uuid[])`,
+      [messageIds]
+    );
+
+    // Organize attachments by message_id
+    const attachmentsMap = {};
+    for (const attachment of attachmentsRes.rows) {
+      if (!attachmentsMap[attachment.message_id]) {
+        attachmentsMap[attachment.message_id] = [];
+      }
+      attachmentsMap[attachment.message_id].push({
+        media_type: attachment.media_type,
+        media_url: attachment.media_url,
+        media_name: attachment.media_name,
+        media_size: attachment.media_size,
+      });
+    }
+
+    return messages.map((msg) => ({
+      message_id: msg.message_id,
+      from_user_id: msg.from_user_id,
+      to_user_id: msg.to_user_id,
+      message_text: msg.is_deleted
+        ? "pesan ini sudah dihapus"
+        : msg.message_text,
+      is_deleted: msg.is_deleted,
+      is_visible: msg.is_visible,
+      hidden_at: msg.hidden_at,
+      created_at: msg.created_at,
+      read_at: msg.read_at,
+      updated_at: msg.updated_at,
+      attachments: attachmentsMap[msg.message_id] || [],
+    }));
+  } finally {
+    client.release();
+  }
+};
+
+
 
 const getMessageById = async (messageId) => {
   const result = await db.query(
@@ -66,36 +130,6 @@ const getMessageById = async (messageId) => {
     [messageId]
   );
   return result.rows[0];
-};
-
-// Ambil semua pesan antara user dan kontak (2 arah)
-const getMessagesBetween = async (userId, contactId) => {
-  const result = await db.query(
-    `SELECT m.*, v.is_visible, v.hidden_at, m.is_deleted
-    FROM messages m
-    JOIN message_user_visibility v ON v.message_id = m.message_id
-    WHERE
-    ((m.from_user_id = $1 AND m.to_user_id =$2)
-    OR (m.from_user_id = $2 AND m.to_user_id =$1))
-    AND v.user_id = $1
-    AND v.is_visible = true
-    ORDER BY m.created_at ASC,
-    m.message_id ASC`,
-    [userId, contactId]
-  );
-
-  return result.rows.map((msg) => ({
-    message_id: msg.message_id,
-    from_user_id: msg.from_user_id,
-    to_user_id: msg.to_user_id,
-    message_text: msg.is_deleted ? "pesan ini sudah dihapus" : msg.message_text,
-    is_deleted: msg.is_deleted,
-    is_visible: msg.is_visible,
-    hidden_at: msg.hidden_at,
-    created_at: msg.created_at,
-    read_at: msg.read_at,
-    updated_at: msg.updated_at,
-  }));
 };
 
 // Ambil pesan terakhir untuk semua kontak user
