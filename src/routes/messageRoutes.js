@@ -24,6 +24,12 @@ const messageRoutes = [
     options: { pre: [{ method: requireAuth }] },
   },
   {
+    method: "GET",
+    path: "/messages/chat",
+    handler: messageController.getLastMessagesPerChat,
+    options: { pre: [{ method: requireAuth }] },
+  },
+  {
     method: "PUT",
     path: "/messages/{message_id}",
     handler: messageController.updateMessage,

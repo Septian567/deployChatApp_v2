@@ -133,18 +133,28 @@ const getMessageById = async (messageId) => {
 };
 
 // Ambil pesan terakhir untuk semua kontak user
-const getLatestMessagesByUser = async (userId) => {
+const getLastMessagePerChat = async (userId) => {
   const result = await db.query(
     `
-    SELECT DISTINCT ON (to_contact_id) *
-    FROM messages
-    WHERE from_user_id = $1 OR to_contact_id = $1
-    ORDER BY to_contact_id, created_at DESC
+    SELECT DISTINCT ON (chat_partner_id) *
+    FROM (
+      SELECT
+        *,
+        CASE
+          WHEN from_user_id = $1 THEN to_user_id
+          ELSE from_user_id
+        END AS chat_partner_id
+      FROM messages
+      WHERE from_user_id = $1 OR to_user_id = $1
+    ) sub
+    ORDER BY chat_partner_id, created_at DESC
     `,
     [userId]
   );
+
   return result.rows;
 };
+
 
 // Tandai pesan sebagai sudah dibaca
 const markMessageAsRead = async (messageId) => {
@@ -247,7 +257,7 @@ const deleteMessageForUser = async (userId, messageId) => {
 module.exports = {
   sendMessage,
   getMessagesBetween,
-  getLatestMessagesByUser,
+  getLastMessagePerChat,
   markMessageAsRead,
   updateMessageText,
   deleteMessage,

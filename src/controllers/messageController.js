@@ -157,6 +157,20 @@ const updateMessage = async (request, h) => {
   }
 };
 
+const getLastMessagesPerChat = async (request, h) => {
+  const userId = request.pre.user.userId;
+
+  try {
+    const messages = await messageService.getLastMessagePerChat(userId);
+    return h.response(messages).code(200);
+  } catch (err) {
+    console.error("Gagal mengambil pesan terakhir per chat:", err);
+    return h.response({ error: "Gagal mengambil pesan" }).code(500);
+  }
+};
+
+
+
 const deleteMessage = async (request, h) => {
   const { message_id } = request.params;
   const userId = request.pre.user.userId;
@@ -257,6 +271,7 @@ const deleteMessageForUser = async (request, h) => {
 
 module.exports = {
   sendMessage,
+  getLastMessagesPerChat,
   getMessagesBetweenUsers,
   updateMessage,
   deleteMessage,
