@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat List Tester</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background: #f9f9f9;
+        }
+
+        h1 {
+            font-size: 1.5em;
+        }
+
+        ul {
+            padding-left: 0;
+            list-style: none;
+        }
+
+        li {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        #status {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            background: #007bff;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Chat List (Realtime)</h1>
+
+    <p><strong>Status:</strong> <span id="status">🔌 Belum tersambung</span></p>
+
+    <label><strong>User ID:</strong></label>
+    <input type="text" id="userIdInput" placeholder="misalnya: user-123" />
+
+    <label><strong>Token JWT:</strong></label>
+    <input type="text" id="tokenInput" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxY2RhYmVlOS01MGUzLTRmNjQtYjU1Ni01NzEzNGE1MjljMDEiLCJlbWFpbCI6InRlc3RpbmcxMkBleGFtcGxlLmNvbSIsImlhdCI6MTc1Mjc2MTczOCwiZXhwIjoxNzYwNTM3NzM4fQ.2rTEzddMtE38iSNn35QDNrEjeZDXIsZYp2u6555tO2E" />
+
+    <button onclick="connectSocket()">🔗 Sambungkan Socket</button>
+    <button onclick="loadChats()">📥 Ambil Chat List (HTTP)</button>
+
+    <ul id="chatList"></ul>
+
+    <script>
+        let socket;
+        let API_URL="http://localhost:5000/messages/chat"; // ganti jika server di IP lain
+        let SOCKET_URL="http://localhost:5000";
+
+        function connectSocket() {
+            const userId=document.getElementById("userIdInput").value.trim();
+            if(!userId) {
+                alert("Isi User ID terlebih dahulu");
+                return;
+            }
+
+            socket=io(SOCKET_URL,{transports: ["websocket"]});
+
+            socket.on("connect",() => {
+                document.getElementById("status").textContent="🟢 Socket tersambung";
+                console.log("✅ Socket connected");
+
+                // Gabung ke room user ID
+                socket.emit("joinRoom",userId);
+                console.log("🔗 Join room:",userId);
+            });
+
+            socket.on("connect_error",(err) => {
+                console.error("❌ Gagal koneksi socket:",err);
+                document.getElementById("status").textContent="❌ Gagal koneksi socket";
+            });
+
+            socket.on("chatListUpdated",(messages) => {
+                console.log("📡 chatListUpdated via socket:",messages);
+                updateChatList(messages);
+            });
+
+            socket.on("disconnect",() => {
+                document.getElementById("status").textContent="🔴 Socket terputus";
+            });
+        }
+
+        function loadChats() {
+            const token=document.getElementById("tokenInput").value.trim();
+
+            if(!token) {
+                alert("Masukkan token JWT terlebih dahulu!");
+                return;
+            }
+
+            fetch(API_URL,{
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                },
+            })
+                .then((res) => {
+                    if(!res.ok) throw new Error(`Status ${res.status}`);
+                    return res.json();
+                })
+                .then((messages) => {
+                    console.log("📦 Chat list via HTTP:",messages);
+                    updateChatList(messages);
+                })
+                .catch((err) => {
+                    console.error("❌ Gagal mengambil chat list:",err);
+                    document.getElementById("status").textContent="❌ Gagal mengambil chat list";
+                });
+        }
+
+        function updateChatList(messages) {
+            const chatList=document.getElementById("chatList");
+            chatList.innerHTML="";
+            messages.forEach((msg) => {
+                const li=document.createElement("li");
+                const time=new Date(msg.created_at).toLocaleTimeString();
+                li.textContent=`${msg.message_text} — ${time}`;
+                chatList.appendChild(li);
+            });
+        }
+    </script>
+</body>
+
+</html>

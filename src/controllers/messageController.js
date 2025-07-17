@@ -159,15 +159,21 @@ const updateMessage = async (request, h) => {
 
 const getLastMessagesPerChat = async (request, h) => {
   const userId = request.pre.user.userId;
+  const io = request.server.app.io; // Ambil instance socket.io dari server Hapi
 
   try {
     const messages = await messageService.getLastMessagePerChat(userId);
+
+    // Emit pesan-pesan terakhir ke user yang sedang login
+    io.to(userId).emit("chatListUpdated", messages);
+
     return h.response(messages).code(200);
   } catch (err) {
     console.error("Gagal mengambil pesan terakhir per chat:", err);
     return h.response({ error: "Gagal mengambil pesan" }).code(500);
   }
 };
+
 
 
 
