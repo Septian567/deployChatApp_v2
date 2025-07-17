@@ -1,0 +1,25 @@
+langkah setup awal di skip
+
+1. pastikan api bekerja, test di postman
+2. objek file dikirim ke AWS S3 - bucket -- setting lebih dulu
+3. simpan di git, gitignore file .env dan node_modules
+4. masuk terminal EC2 lewat powershell
+ssh -i "my-second-key-pair.pem" ec2-54-251-166-174.ap-southeast-1.compute.amazonaws.com -- error
+
+penanganan di powershell
+1. icacls "C:\Users\USER\MyData\Programming\Dicoding\belajarAPI\API_CHAT_v3\deployments_v2\my-second-key-pair.pem" /inheritance:r
+2. whoami -- dapat username --> desktop-f7tlbci\user
+3. icacls "C:\Users\USER\MyData\Programming\Dicoding\belajarAPI\API_CHAT_v3\deployments_v2\my-second-key-pair.pem" /grant:r "desktop-f7tlbci\user:R" -- SUCCESS
+
+masuk folder tempat key pem dulu
+panggil ini --> pembuatan instance pake ubuntu
+1. ssh -i "my-second-key-pair.pem" ubuntu@ec2-54-251-166-174.ap-southeast-1.compute.amazonaws.com -- SUCCESS
+2. pastikan git sudah di push ke remote
+3. buat folder untuk git remote --> mkdir deployments_v2
+4. ls --> untuk melihat daftar folder
+5. cd deployments_v2 --> masuk ke folder
+6. git clone git@github.com:Septian567/deployChatApp_v1.git --> kalau semua benar -- proses lancar -- jangan salah ketik
+7. ls
+8. masuk ke folder yang baru cd chat_app_v2 (database RDS pake yang versi 14.xx biar ga kena ssl)
+9. pastikan database RDS sudah sesuai
+10. 
